@@ -1,35 +1,33 @@
-pipeline {
-    agent any 
-    environment {
-    DOCKERHUB_CREDENTIALS = credentials('dockerID001')
-    }
-    stages { 
-        stage('SCM Checkout') {
-            steps{
-            git 'https://github.com/sbk002/nodejs-wokring.git'
-            }
-        }
+node {
+    def app
 
-        stage('Build docker image') {
-            steps {  
-                sh 'docker build -t balanodejs/nodeapp:$BUILD_NUMBER .'
-            }
-        }
-        stage('login to dockerhub') {
-            steps{
-                sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
-            }
-        }
-        stage('push image') {
-            steps{
-                sh 'docker push balanodejs/nodeapp:$BUILD_NUMBER'
-            }
-        }
-}
-post {
-        always {
-            sh 'docker logout'
+    stage('Clone repository') {
+        /* Cloning the Repository to our Workspace */
+
+        checkout scm
+    }
+
+    stage('Build image') {
+        /* This builds the actual image */
+
+        app = docker.build("anandr72/nodeapp")
+    }
+
+    stage('Test image') {
+        
+        app.inside {
+            echo "Tests passed"
         }
     }
-}
 
+    stage('Push image') {
+        /* 
+			You would need to first register with DockerHub before you can push images to your account
+		*/
+        docker.withRegistry('https://registry.hub.docker.com', 'docker-hub') {
+            app.push("${env.BUILD_NUMBER}")
+            app.push("latest")
+            } 
+                echo "Trying to Push Docker Build to DockerHub"
+    }
+}
